@@ -1,0 +1,52 @@
+pipeline {
+    agent { label 'jenkins-agent' }
+    
+    environment {
+        AWS_REGION = 'us-east-1'
+        ECR_REPO = 'YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/shopping-cart-app'
+        CLUSTER_NAME = 'production-cluster'
+        SERVICE_NAME = 'shopping-cart-service'
+        IMAGE_TAG = "${env.BUILD_ID}"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/mehediislamripon/Shopping-Cart-Application'
+            }
+        }
+        
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t ${ECR_REPO}:${IMAGE_TAG} -t ${ECR_REPO}:latest .'
+            }
+        }
+        
+        stage('Push to ECR') {
+            steps {
+                sh '''
+                    aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPO}
+                    docker push ${ECR_REPO}:${IMAGE_TAG}
+                    docker push ${ECR_REPO}:latest
+                '''
+            }
+        }
+        
+        stage('Deploy to ECS') {
+            steps {
+                sh '''
+                    aws ecs update-service --cluster ${CLUSTER_NAME} --service ${SERVICE_NAME} --force-new-deployment --region ${AWS_REGION}
+                '''
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo "Deployment successful! Service is rolling out."
+        }
+        failure {
+            echo "Deployment failed! Conceptual Rollback: Revert git commit and re-run pipeline, or manually scale back to previous Task Definition."
+        }
+    }
+}
