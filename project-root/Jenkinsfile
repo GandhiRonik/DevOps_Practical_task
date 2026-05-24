@@ -19,8 +19,8 @@ pipeline {
         
         stage('Build Docker Image') {
             steps {
-                // 👇 THIS IS THE FIX: Tells Jenkins to step inside the folder first
-                dir('project-root') {
+                // FIX 2: This explicitly tells Jenkins to go into the "app" folder where your Dockerfile actually lives.
+                dir('project-root/app') {
                     sh "docker build -t ${ECR_REPO}:${IMAGE_TAG} -t ${ECR_REPO}:latest ."
                 }
             }
