@@ -49,5 +49,6 @@ module "jenkins" {
   private_subnet_id    = module.vpc.private_subnet_ids[0]
   master_sg_id         = module.security.jenkins_master_sg_id
   agent_sg_id          = module.security.jenkins_agent_sg_id
-  jenkins_role_profile = module.iam.jenkins_instance_profile # <-- FIXED!
+  app_sg_id            = module.security.app_sg_id 
+  jenkins_role_profile = module.iam.jenkins_instance_profile
 }

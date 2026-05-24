@@ -4,7 +4,7 @@ variable "public_subnet_id" {
 }
 
 variable "private_subnet_id" {
-  description = "Private subnet ID for Jenkins Agent (Unused currently due to vCPU limit)"
+  description = "Private subnet ID for Jenkins Agent"
   type        = string
 }
 
@@ -14,11 +14,16 @@ variable "master_sg_id" {
 }
 
 variable "agent_sg_id" {
-  description = "Security Group ID for Jenkins Agent (Unused currently)"
+  description = "Security Group ID for Jenkins Agent"
   type        = string
 }
 
 variable "jenkins_role_profile" {
   description = "IAM Instance Profile for Jenkins"
+  type        = string
+}
+
+variable "app_sg_id" {
+  description = "Security Group ID for the Target Application Server"
   type        = string
 }

@@ -1,52 +1,113 @@
 pipeline {
-    agent { label 'jenkins-agent' }
+    agent any 
     
     environment {
-        AWS_REGION = 'us-east-1'
-        ECR_REPO = 'YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/shopping-cart-app'
-        CLUSTER_NAME = 'production-cluster'
-        SERVICE_NAME = 'shopping-cart-service'
+        // ⚠️ REPLACE THESE WITH YOUR EXACT DETAILS
+        AWS_REGION = 'us-east-1' 
+        AWS_ACCOUNT_ID = '300536313346' 
+        ECR_REPO = 'shopping-cart-app'
+        
         IMAGE_TAG = "${env.BUILD_ID}"
+        ECR_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
     }
 
     stages {
-        stage('Checkout') {
+        stage('Checkout Code') {
             steps {
-                git branch: 'main', url: 'https://github.com/mehediislamripon/Shopping-Cart-Application'
+                checkout scm
             }
         }
         
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t ${ECR_REPO}:${IMAGE_TAG} -t ${ECR_REPO}:latest .'
+                sh "docker build -t ${ECR_REPO}:${IMAGE_TAG} -t ${ECR_REPO}:latest ."
             }
         }
         
-        stage('Push to ECR') {
+        stage('Push to Amazon ECR') {
             steps {
-                sh '''
-                    aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPO}
-                    docker push ${ECR_REPO}:${IMAGE_TAG}
-                    docker push ${ECR_REPO}:latest
-                '''
+                // Authenticates automatically using your EC2 IAM Role
+                sh "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}"
+                
+                // Tags the image and pushes it to AWS
+                sh "docker tag ${ECR_REPO}:${IMAGE_TAG} ${ECR_REGISTRY}/${ECR_REPO}:${IMAGE_TAG}"
+                sh "docker tag ${ECR_REPO}:latest ${ECR_REGISTRY}/${ECR_REPO}:latest"
+                sh "docker push ${ECR_REGISTRY}/${ECR_REPO}:${IMAGE_TAG}"
+                sh "docker push ${ECR_REGISTRY}/${ECR_REPO}:latest"
             }
         }
         
-        stage('Deploy to ECS') {
+        stage('Deploy Application') {
             steps {
-                sh '''
-                    aws ecs update-service --cluster ${CLUSTER_NAME} --service ${SERVICE_NAME} --force-new-deployment --region ${AWS_REGION}
-                '''
+                // Kills the old version and starts the new one
+                // Update the port mapping (80:80) to match what your app requires
+                sh """
+                docker stop shopping-cart || true
+                docker rm shopping-cart || true
+                docker run -d --name shopping-cart -p 80:80 ${ECR_REGISTRY}/${ECR_REPO}:latest
+                """
             }
-        }
-    }
-    
-    post {
-        success {
-            echo "Deployment successful! Service is rolling out."
-        }
-        failure {
-            echo "Deployment failed! Conceptual Rollback: Revert git commit and re-run pipeline, or manually scale back to previous Task Definition."
         }
     }
 }
+
+// pipeline {
+//     agent {
+//         // This ensures the job runs ONLY on your separate EC2 Agent instance
+//         label 'jenkins-agent'
+//     }
+    
+//     environment {
+//         AWS_REGION = 'us-east-1'
+//         // You MUST update these next two variables with your actual AWS details
+//         AWS_ACCOUNT_ID = '300536313346' 
+//         ECR_REPO = 'shopping-cart-app'
+        
+//         IMAGE_TAG = "${env.BUILD_ID}"
+//         ECR_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+//     }
+
+//     stages {
+//         stage('Checkout Code') {
+//             steps {
+//                 checkout scm
+//             }
+//         }
+        
+//         stage('Build Docker Image') {
+//             steps {
+//                 sh "docker build -t ${ECR_REPO}:${IMAGE_TAG} ."
+//             }
+//         }
+        
+//         stage('Push to Amazon ECR') {
+//             steps {
+//                 // The Agent's AWS IAM Role automatically authenticates this login command
+//                 sh "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}"
+                
+//                 sh "docker tag ${ECR_REPO}:${IMAGE_TAG} ${ECR_REGISTRY}/${ECR_REPO}:${IMAGE_TAG}"
+//                 sh "docker tag ${ECR_REPO}:${IMAGE_TAG} ${ECR_REGISTRY}/${ECR_REPO}:latest"
+                
+//                 sh "docker push ${ECR_REGISTRY}/${ECR_REPO}:${IMAGE_TAG}"
+//                 sh "docker push ${ECR_REGISTRY}/${ECR_REPO}:latest"
+//             }
+//         }
+        
+//         stage('Deploy to App Server') {
+//             steps {
+//                 // Use the SSH key stored in Jenkins to connect to the target App Server
+//                 withCredentials([sshUserPrivateKey(credentialsId: 'aws-ec2-key', keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) {
+//                     // Update <APP_SERVER_PRIVATE_IP> with the IP of your 3rd EC2 instance!
+//                     sh """
+//                     ssh -o StrictHostKeyChecking=no -i \$SSH_KEY \$SSH_USER@<APP_SERVER_PRIVATE_IP> '
+//                         aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+//                         docker stop shopping-cart || true
+//                         docker rm shopping-cart || true
+//                         docker run -d --name shopping-cart -p 80:8080 ${ECR_REGISTRY}/${ECR_REPO}:latest
+//                     '
+//                     """
+//                 }
+//             }
+//         }
+//     }
+// }
