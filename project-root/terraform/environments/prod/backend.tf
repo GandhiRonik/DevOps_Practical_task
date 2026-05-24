@@ -1,6 +1,6 @@
 terraform {
   backend "s3" {
-    bucket         = "company-production-tf-state-bucket"
+    bucket         = "tfstate-devops-practical-task"
     key            = "prod/terraform.tfstate"
     region         = "us-east-1"
     encrypt        = true

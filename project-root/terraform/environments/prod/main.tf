@@ -44,11 +44,10 @@ module "ecs" {
 }
 
 module "jenkins" {
-  source             = "../../modules/jenkins"
-  vpc_id             = module.vpc.vpc_id
-  public_subnet_id   = module.vpc.public_subnet_ids[0]
-  private_subnet_id  = module.vpc.private_subnet_ids[0]
-  master_sg_id       = module.security.jenkins_master_sg_id
-  agent_sg_id        = module.security.jenkins_agent_sg_id
-  jenkins_role_profile = module.iam.jenkins_instance_profile
+  source               = "../../modules/jenkins"
+  public_subnet_id     = module.vpc.public_subnet_ids[0]
+  private_subnet_id    = module.vpc.private_subnet_ids[0]
+  master_sg_id         = module.security.jenkins_master_sg_id
+  agent_sg_id          = module.security.jenkins_agent_sg_id
+  jenkins_role_profile = module.iam.jenkins_instance_profile # <-- FIXED!
 }
