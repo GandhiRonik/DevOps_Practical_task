@@ -45,7 +45,7 @@ pipeline {
                 sh """
                 docker stop shopping-cart || true
                 docker rm shopping-cart || true
-                docker run -d --name shopping-cart -p 80:80 ${ECR_REGISTRY}/${ECR_REPO}:latest
+                docker run -d --name shopping-cart -p 80:8080 ${ECR_REGISTRY}/${ECR_REPO}:latest
                 """
             }
         }
